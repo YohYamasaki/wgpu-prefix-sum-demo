@@ -1,0 +1,7 @@
+[package]
+name = "wgpu-prefix-sum-demo"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wgpu = "28.0.0"
