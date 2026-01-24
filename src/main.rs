@@ -9,6 +9,6 @@ fn main() -> anyhow::Result<()> {
     gpu_ctx.upload_data(&data);
     gpu_ctx.run_prefix_scan();
     let res = gpu_ctx.read_computed_data()?;
-    println!("{:?}", res);
+    println!("Last element: {}", res[res.len() - 1]);
     Ok(())
 }
