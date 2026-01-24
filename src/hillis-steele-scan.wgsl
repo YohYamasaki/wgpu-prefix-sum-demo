@@ -9,11 +9,14 @@ struct Uniforms {
 @compute
 @workgroup_size(64)
 fn main(
-     @builtin(global_invocation_id) global_invocation_id: vec3<u32>,
+  @builtin(global_invocation_id) gid: vec3<u32>,
+  @builtin(num_workgroups) nwg: vec3<u32>,
 ) {
-    let i = global_invocation_id.x;
     let total = arrayLength(&src);
-    // We need to stop the operation since the workgroup size may not be exact multiple of the array size.
+
+    let width = nwg.x * 64u;
+    let i = gid.x + gid.y * width;
+
     if (i >= total) {
         return;
     }

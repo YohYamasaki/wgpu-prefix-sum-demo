@@ -3,7 +3,7 @@ extern crate core;
 use wgpu_prefix_sum_demo::GpuContext;
 
 fn main() -> anyhow::Result<()> {
-    let n = 1_000_000;
+    let n = 1_000_000_000;
     let data = vec![1u32; n];
     let gpu_ctx = pollster::block_on(GpuContext::new(n))?;
     gpu_ctx.upload_data(&data);

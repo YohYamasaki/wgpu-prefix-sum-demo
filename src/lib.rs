@@ -27,11 +27,15 @@ pub async fn init_wgpu() -> (wgpu::Device, wgpu::Queue) {
         .await
         .expect("No adapter found");
 
+    let mut limits = wgpu::Limits::default();
+    limits.max_buffer_size = adapter.limits().max_buffer_size;
+    limits.max_storage_buffer_binding_size = adapter.limits().max_storage_buffer_binding_size;
+
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor {
             label: Some("device"),
             required_features: Default::default(),
-            required_limits: wgpu::Limits::default(),
+            required_limits: limits,
             experimental_features: Default::default(),
             memory_hints: wgpu::MemoryHints::default(),
             trace: Default::default(),
@@ -285,7 +289,13 @@ impl GpuContext {
     }
 
     pub fn run_prefix_scan(&self) {
-        let num_dispatches = self.n.div_ceil(64) as u32;
+        const WG_SIZE: u32 = 64;
+
+        let workgroups_needed = self.n.div_ceil(WG_SIZE as usize) as u32;
+
+        let max_dim = self.device.limits().max_compute_workgroups_per_dimension;
+        let x = workgroups_needed.min(max_dim);
+        let y = (workgroups_needed + x - 1) / x;
         let mut encoder = self.device.create_command_encoder(&Default::default());
         {
             let mut pass = encoder.begin_compute_pass(&Default::default());
@@ -298,7 +308,7 @@ impl GpuContext {
                     &self.bind_group_1
                 };
                 pass.set_bind_group(0, bg, &[offset_bytes]);
-                pass.dispatch_workgroups(num_dispatches, 1, 1);
+                pass.dispatch_workgroups(x, y, 1);
             }
         }
         self.queue.submit([encoder.finish()]);
