@@ -42,13 +42,6 @@ pub async fn init_wgpu() -> (wgpu::Device, wgpu::Queue) {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct Params {
-    n: u32,
-    _pad: [u32; 3],
-}
-
-#[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniforms {
     step: u32,
@@ -63,7 +56,6 @@ pub struct GpuContext {
     bind_group_1: wgpu::BindGroup,
     data0: wgpu::Buffer,
     data1: wgpu::Buffer,
-    uniform: wgpu::Buffer,
     readback: wgpu::Buffer,
     n: usize,
     max_steps: u32,
@@ -230,8 +222,6 @@ impl GpuContext {
             ],
         });
 
-        let max_steps = n.next_power_of_two().ilog2(); // ceil(log2(N))
-
         Ok(Self {
             device,
             queue,
@@ -240,7 +230,6 @@ impl GpuContext {
             bind_group_1,
             data0,
             data1,
-            uniform,
             readback,
             n,
             max_steps,
