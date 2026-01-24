@@ -1,4 +1,4 @@
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 use wgpu_prefix_sum_demo::{GpuContext, cpu_prefix_sum};
 
@@ -16,9 +16,15 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("GPU prefix sum", |b| {
-        b.iter(|| {
-            gpu_ctx.run_prefix_scan();
-        })
+        b.iter_batched(
+            || {
+                gpu_ctx.run_prefix_scan();
+            },
+            |_| {
+                gpu_ctx.wait_idle().unwrap();
+            },
+            BatchSize::PerIteration,
+        )
     });
 }
 

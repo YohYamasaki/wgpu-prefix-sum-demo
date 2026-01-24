@@ -30,7 +30,7 @@ pub async fn init_wgpu() -> (wgpu::Device, wgpu::Queue) {
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor {
             label: Some("device"),
-            required_features: wgpu::Features::TIMESTAMP_QUERY,
+            required_features: Default::default(),
             required_limits: wgpu::Limits::default(),
             experimental_features: Default::default(),
             memory_hints: wgpu::MemoryHints::default(),
@@ -50,7 +50,7 @@ struct Uniforms {
 
 pub struct GpuContext {
     device: wgpu::Device,
-    queue: wgpu::Queue,
+    pub queue: wgpu::Queue,
     pipeline: wgpu::ComputePipeline,
     bind_group_0: wgpu::BindGroup,
     bind_group_1: wgpu::BindGroup,
@@ -290,7 +290,6 @@ impl GpuContext {
         {
             let mut pass = encoder.begin_compute_pass(&Default::default());
             pass.set_pipeline(&self.pipeline);
-
             for i in 0..self.max_steps {
                 let offset_bytes = i * self.uniform_stride;
                 let bg = if i % 2 == 0 {
@@ -303,5 +302,20 @@ impl GpuContext {
             }
         }
         self.queue.submit([encoder.finish()]);
+    }
+
+    pub fn wait_for_previous_submit(&self) -> anyhow::Result<()> {
+        let (tx, rx) = channel();
+        self.queue.on_submitted_work_done(move || {
+            let _ = tx.send(());
+        });
+        self.device.poll(wgpu::PollType::wait_indefinitely())?;
+        let _ = rx.recv();
+        Ok(())
+    }
+
+    pub fn wait_idle(&self) -> anyhow::Result<()> {
+        self.device.poll(wgpu::PollType::wait_indefinitely())?;
+        Ok(())
     }
 }
