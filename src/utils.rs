@@ -1,0 +1,33 @@
+
+
+pub fn align_up(v: usize, a: usize) -> usize {
+    (v + a - 1) / a * a
+}
+pub async fn init_wgpu() -> (wgpu::Device, wgpu::Queue) {
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        })
+        .await
+        .expect("No adapter found");
+
+    let mut limits = wgpu::Limits::default();
+    limits.max_buffer_size = adapter.limits().max_buffer_size;
+    limits.max_storage_buffer_binding_size = adapter.limits().max_storage_buffer_binding_size;
+
+    let (device, queue) = adapter
+        .request_device(&wgpu::DeviceDescriptor {
+            label: Some("device"),
+            required_features: Default::default(),
+            required_limits: limits,
+            experimental_features: Default::default(),
+            memory_hints: wgpu::MemoryHints::default(),
+            trace: Default::default(),
+        })
+        .await
+        .expect("Failed to create device");
+    (device, queue)
+}

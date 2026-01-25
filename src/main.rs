@@ -1,11 +1,12 @@
 extern crate core;
 
-use wgpu_prefix_sum_demo::GpuContext;
+use wgpu_prefix_sum_demo::hillis_steele_scan::HillisSteeleGpuContext;
 
 fn main() -> anyhow::Result<()> {
     let n = 1_000_000_000;
     let data = vec![1u32; n];
-    let gpu_ctx = pollster::block_on(GpuContext::new(n))?;
+    let gpu_ctx = pollster::block_on(HillisSteeleGpuContext::new(n))?;
+    println!("n: {}", n);
     gpu_ctx.upload_data(&data);
     gpu_ctx.run_prefix_scan();
     let res = gpu_ctx.read_computed_data()?;

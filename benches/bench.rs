@@ -1,11 +1,12 @@
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use wgpu_prefix_sum_demo::{GpuContext, cpu_prefix_sum};
+use wgpu_prefix_sum_demo::cpu_prefix_scan::cpu_prefix_sum;
+use wgpu_prefix_sum_demo::hillis_steele_scan::HillisSteeleGpuContext;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let n = 1_000_000;
     let data = vec![1u32; n];
-    let gpu_ctx = pollster::block_on(GpuContext::new(n)).unwrap();
+    let gpu_ctx = pollster::block_on(HillisSteeleGpuContext::new(n)).unwrap();
     gpu_ctx.upload_data(&data);
 
     c.bench_function("CPU prefix sum", |b| {
