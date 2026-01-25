@@ -1,13 +1,16 @@
-use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use std::hint::black_box;
+use wgpu_prefix_sum_demo::blelloch_scan::BlellochGpuContext;
 use wgpu_prefix_sum_demo::cpu_prefix_scan::cpu_prefix_sum;
 use wgpu_prefix_sum_demo::hillis_steele_scan::HillisSteeleGpuContext;
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let n = 1_000_000;
+    let n = 10_000_000u32.next_power_of_two() as usize;
     let data = vec![1u32; n];
-    let gpu_ctx = pollster::block_on(HillisSteeleGpuContext::new(n)).unwrap();
-    gpu_ctx.upload_data(&data);
+    let hillis_steele_gpu_ctx = pollster::block_on(HillisSteeleGpuContext::new(n)).unwrap();
+    let blelloch_gpu_ctx = pollster::block_on(BlellochGpuContext::new(n)).unwrap();
+    hillis_steele_gpu_ctx.upload_data(&data);
+    blelloch_gpu_ctx.upload_data(&data);
 
     c.bench_function("CPU prefix sum", |b| {
         b.iter(|| {
@@ -16,13 +19,29 @@ fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("GPU prefix sum", |b| {
+    c.bench_function("GPU prefix sum (Hillis-Steele)", |b| {
         b.iter_batched(
             || {
-                gpu_ctx.run_prefix_scan();
+                hillis_steele_gpu_ctx.run_prefix_scan();
             },
             |_| {
-                gpu_ctx.wait_idle().unwrap();
+                hillis_steele_gpu_ctx.wait_idle().unwrap();
+            },
+            BatchSize::PerIteration,
+        )
+    });
+
+    c.bench_function("GPU prefix sum (Blelloch)", |b| {
+        b.iter_batched(
+            || {
+                let mut encoder = blelloch_gpu_ctx.get_command_encoder();
+                blelloch_gpu_ctx.encode_up_sweep(&mut encoder);
+                blelloch_gpu_ctx.encode_set_last_zero(&mut encoder);
+                blelloch_gpu_ctx.encode_down_sweep(&mut encoder);
+                blelloch_gpu_ctx.submit(encoder);
+            },
+            |_| {
+                blelloch_gpu_ctx.wait_idle().unwrap();
             },
             BatchSize::PerIteration,
         )
