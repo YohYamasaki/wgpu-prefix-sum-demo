@@ -3,6 +3,18 @@ use std::num::NonZeroU64;
 use std::sync::mpsc::channel;
 use wgpu::util::DeviceExt;
 
+fn split_dispatch_3d(workgroups_needed: u32, max_dim: u32) -> [u32; 3] {
+    let x = workgroups_needed.min(max_dim);
+    let remaining_after_x = (workgroups_needed + x - 1) / x;
+    let y = remaining_after_x.min(max_dim);
+
+    let xy = (x as u64) * (y as u64);
+    let z = ((workgroups_needed as u64) + xy - 1) / xy;
+    assert!(z <= max_dim as u64, "dispatch exceeds max_dim^3");
+
+    [x, y, z as u32]
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniform {
@@ -21,7 +33,6 @@ pub struct BlellochGpuContext {
     data: wgpu::Buffer,
     uniform: wgpu::Buffer,
     readback: wgpu::Buffer,
-    workgroups_size: [u32; 3],
     n: usize,
     max_steps: u32,
     uniform_stride: u32,
@@ -29,8 +40,11 @@ pub struct BlellochGpuContext {
 
 impl BlellochGpuContext {
     pub async fn new(n: usize) -> anyhow::Result<Self> {
-        assert!(n.is_power_of_two(), "Number of elements of data has to be a power of 2.");
-        
+        assert!(
+            n.is_power_of_two(),
+            "Number of elements of data has to be a power of 2."
+        );
+
         let (device, queue) = init_wgpu().await;
 
         let up_sweep_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -202,16 +216,6 @@ impl BlellochGpuContext {
             ],
         });
 
-        const WG_SIZE: u32 = 64;
-        let workgroups_needed = n.div_ceil(WG_SIZE as usize) as u32;
-        let max_dim = device.limits().max_compute_workgroups_per_dimension;
-        let x = workgroups_needed.min(max_dim);
-        let y = (workgroups_needed + x - 1) / x;
-        let xy = (x as u64) * (y as u64);
-        let z = (((workgroups_needed as u64) + xy - 1) / xy);
-        assert!(z <= max_dim as u64, "dispatch exceeds max_dim^3");
-        let workgroups_size = [x, y, z as u32];
-
         Ok(Self {
             device,
             queue,
@@ -224,7 +228,6 @@ impl BlellochGpuContext {
             data,
             uniform,
             readback,
-            workgroups_size,
             n,
             max_steps,
             uniform_stride,
@@ -272,15 +275,20 @@ impl BlellochGpuContext {
     }
 
     pub fn encode_up_sweep(&self, encoder: &mut wgpu::CommandEncoder) {
-        {
-            let mut pass = encoder.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.up_sweep_pipeline);
-            for i in 0..self.max_steps {
-                let offset_bytes = i * self.uniform_stride;
-                pass.set_bind_group(0, &self.up_sweep_bind_group, &[offset_bytes]);
-                let [x, y, z] = self.workgroups_size;
-                pass.dispatch_workgroups(x, y, z);
-            }
+        const WG_SIZE: u32 = 64;
+        let max_dim = self.device.limits().max_compute_workgroups_per_dimension;
+
+        let mut pass = encoder.begin_compute_pass(&Default::default());
+        pass.set_pipeline(&self.up_sweep_pipeline);
+        for i in 0..self.max_steps {
+            let step = 2u32 << i; // same as uniform
+            let active = self.n as u32 / step;
+            let workgroups_needed = active.div_ceil(WG_SIZE).max(1);
+            let [x, y, z] = split_dispatch_3d(workgroups_needed, max_dim);
+
+            let offset_bytes = i * self.uniform_stride;
+            pass.set_bind_group(0, &self.up_sweep_bind_group, &[offset_bytes]);
+            pass.dispatch_workgroups(x, y, z);
         }
     }
 
@@ -292,21 +300,27 @@ impl BlellochGpuContext {
     }
 
     pub fn encode_down_sweep(&self, encoder: &mut wgpu::CommandEncoder) {
-        {
-            let mut pass = encoder.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.down_sweep_pipeline);
-            for i in (0..self.max_steps).rev() {
-                let offset_bytes = i * self.uniform_stride;
-                pass.set_bind_group(0, &self.down_sweep_bind_group, &[offset_bytes]);
-                let [x, y, z] = self.workgroups_size;
-                pass.dispatch_workgroups(x, y, z);
-            }
+        const WG_SIZE: u32 = 64;
+        let max_dim = self.device.limits().max_compute_workgroups_per_dimension;
+
+        let mut pass = encoder.begin_compute_pass(&Default::default());
+        pass.set_pipeline(&self.down_sweep_pipeline);
+
+        for i in (0..self.max_steps).rev() {
+            let step = 2u32 << i; // same as uniform
+            let active = self.n as u32 / step;
+            let workgroups_needed = active.div_ceil(WG_SIZE).max(1);
+            let [x, y, z] = split_dispatch_3d(workgroups_needed, max_dim);
+
+            let offset_bytes = i * self.uniform_stride;
+            pass.set_bind_group(0, &self.down_sweep_bind_group, &[offset_bytes]);
+            pass.dispatch_workgroups(x, y, z);
         }
     }
-    
+
     pub fn get_command_encoder(&self) -> wgpu::CommandEncoder {
         self.device.create_command_encoder(&Default::default())
-    } 
+    }
 
     pub fn run_prefix_sum(&self) {
         let mut encoder = self.device.create_command_encoder(&Default::default());

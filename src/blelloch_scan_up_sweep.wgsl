@@ -11,20 +11,17 @@ fn main(
   @builtin(global_invocation_id) gid: vec3<u32>,
   @builtin(num_workgroups) nwg: vec3<u32>,
 ) {
-    let total = arrayLength(&data);
-
+    let n = arrayLength(&data);
+    let step = uni.step;
+    let half = step >> 1u;
     let width = nwg.x * 64u;
     let plane = width * nwg.y;
-    let i = gid.x + gid.y * width + gid.z * plane;
+    let t = gid.x + gid.y * width + gid.z * plane;
 
-    if (i >= total) {
-        return;
-    }
+    let active_idx = n / step;
+    if (t >= active_idx) { return; }
 
-    // Check whether the current index is positioned on a power of 2. Same as (i + 1) % uni.step != 0
-    if (((i + 1u) & (uni.step - 1u)) != 0) {
-        return;
-    }
-
-    data[i] += data[i - (uni.step >> 1)];
+    // We need (step - 1u) to target the last element of the current block
+    let i = (step - 1u) + t * step;
+    data[i] += data[i - half];
 }
