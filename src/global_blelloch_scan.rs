@@ -21,7 +21,7 @@ struct Uniform {
     step: u32, // this has to be a power of 2
     _pad: [u32; 3],
 }
-pub struct BlellochGpuContext {
+pub struct GlobalBlellochGpuContext {
     device: wgpu::Device,
     pub queue: wgpu::Queue,
     up_sweep_pipeline: wgpu::ComputePipeline,
@@ -38,7 +38,7 @@ pub struct BlellochGpuContext {
     uniform_stride: u32,
 }
 
-impl BlellochGpuContext {
+impl GlobalBlellochGpuContext {
     pub async fn new(n: usize) -> anyhow::Result<Self> {
         assert!(
             n.is_power_of_two(),
@@ -49,7 +49,9 @@ impl BlellochGpuContext {
 
         let up_sweep_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("up-sweep shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("blelloch_scan_up_sweep.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                include_str!("global_blelloch_scan_up_sweep.wgsl").into(),
+            ),
         });
 
         let last_zero_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -59,7 +61,9 @@ impl BlellochGpuContext {
 
         let down_sweep_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("down-sweep shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("blelloch_scan_down_sweep.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                include_str!("global_blelloch_scan_down_sweep.wgsl").into(),
+            ),
         });
 
         let sweep_bind_group_layout =
