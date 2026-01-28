@@ -1,5 +1,3 @@
-
-
 pub fn align_up(v: usize, a: usize) -> usize {
     (v + a - 1) / a * a
 }
@@ -21,7 +19,7 @@ pub async fn init_wgpu() -> (wgpu::Device, wgpu::Queue) {
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor {
             label: Some("device"),
-            required_features: Default::default(),
+            required_features: wgpu::Features::SUBGROUP,
             required_limits: limits,
             experimental_features: Default::default(),
             memory_hints: wgpu::MemoryHints::default(),

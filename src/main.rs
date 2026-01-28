@@ -1,14 +1,14 @@
 extern crate core;
 
-use wgpu_prefix_sum_demo::block_blelloch_scan::BlockBlellochGpuContext;
 use wgpu_prefix_sum_demo::cpu_prefix_scan::cpu_prefix_sum;
+use wgpu_prefix_sum_demo::subgroup_scan::SubgroupScanGpuContext;
 
 fn main() -> anyhow::Result<()> {
     let n = 10_000_000u32.next_power_of_two() as usize;
     let data = vec![1u32; n];
     let cpu_res = cpu_prefix_sum(&data);
 
-    let gpu_ctx = pollster::block_on(BlockBlellochGpuContext::new(n))?;
+    let gpu_ctx = pollster::block_on(SubgroupScanGpuContext::new(n))?;
     println!("n: {}", n);
     gpu_ctx.upload_data(&data);
     gpu_ctx.run_prefix_sum();
