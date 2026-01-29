@@ -1,4 +1,7 @@
 pub fn cpu_prefix_sum(data: &[u32]) -> Vec<u32> {
+    if data.is_empty() {
+        return vec![];
+    }
     let n = data.len();
     let mut res = vec![0u32; n];
     res[0] = data[0];

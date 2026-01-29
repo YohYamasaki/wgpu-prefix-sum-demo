@@ -10,7 +10,6 @@ struct Uniforms {
     _pad: [u32; 3],
 }
 
-// TODO: Merge this to the Blelloch one
 pub struct HillisSteeleGpuContext {
     device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -249,7 +248,6 @@ impl HillisSteeleGpuContext {
 
     pub fn run_prefix_scan(&self) {
         const WG_SIZE: u32 = 64;
-
         let workgroups_needed = self.n.div_ceil(WG_SIZE as usize) as u32;
 
         let max_dim = self.device.limits().max_compute_workgroups_per_dimension;

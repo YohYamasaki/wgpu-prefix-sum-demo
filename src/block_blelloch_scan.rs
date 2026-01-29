@@ -24,7 +24,6 @@ pub struct BlockBlellochGpuContext {
     data_buffers: Vec<wgpu::Buffer>,
     elms_per_level: Vec<u32>,
     readback: wgpu::Buffer,
-    n: usize,
 }
 
 impl BlockBlellochGpuContext {
@@ -175,7 +174,6 @@ impl BlockBlellochGpuContext {
             data_buffers,
             elms_per_level,
             readback,
-            n,
         })
     }
 
