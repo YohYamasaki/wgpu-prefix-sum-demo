@@ -1,8 +1,19 @@
 # wgpu-prefix-sum-demo
 
-A demo of GPU prefix-sum (scan) implementations in Rust using wgpu, with multiple algorithms and a small benchmark harness for comparisons.
+A demo of GPU prefix-sum (scan) implementations in Rust using wgpu, with multiple algorithms and a small benchmark
+harness for comparisons.
 
-These implementations are for demonstration purposes only and do not support arrays of arbitrary length, overflow handling or any other edge cases. That means these implementations are not suitable for practical use, although they might be a good starting point for your implementation.
+These implementations are for demonstration purposes only and do not support arrays of arbitrary length, overflow
+handling or any other edge cases. That means these implementations are not suitable for practical use, although they
+might be a good starting point for your implementation.
+
+You can find more details in the below article.
+
+https://yayo1.com/en/blog/webgpu-prefix-sum/
+
+Japanese version is here.
+
+https://zenn.dev/yayo1/articles/1273ec6ac3bc17
 
 ## Benchmark results
 
@@ -15,8 +26,8 @@ Run on Mac mini M4 Pro 24GB with 16 core GPU.
 - CPU baseline: sequential inclusive prefix sum (`src/cpu_prefix_scan.rs`).
 - GPU Hillis-Steele scan (inclusive) with double buffers (`src/hillis_steele_scan.rs`).
 - GPU Blelloch scan (exclusive) in two forms:
-  - On global memory (`src/global_blelloch_scan.rs`).
-  - Blocked scan using shared memory (`src/block_blelloch_scan.rs`).
+    - On global memory (`src/global_blelloch_scan.rs`).
+    - Blocked scan using shared memory (`src/block_blelloch_scan.rs`).
 - GPU subgroup scan (exclusive) using subgroup operations (`src/subgroup_scan.rs`).
 
 WGSL shaders for each GPU path in `src/*.wgsl`.
